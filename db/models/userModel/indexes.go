@@ -1,0 +1,5 @@
+package userModel
+
+func EnsureIndexes() {
+	
+}
