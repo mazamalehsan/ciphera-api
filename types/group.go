@@ -3,7 +3,7 @@ package types
 import "time"
 
 type Group struct {
-	ID        string
+	UUID      string
 	Name      string
 	Admins    []string
 	Users     []string

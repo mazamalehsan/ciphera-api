@@ -1,9 +1,17 @@
 package types
 
+import "time"
+
 type User struct {
-	ID           string
-	IssuedTokens []string
-	Username     string
+	UUID      string
+	Username  string
+	PublicKey string
+	Privates  UserPrivates
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type UserPrivates struct {
 	Groups       []string
-	PublicKey    string
+	IssuedTokens []string
 }

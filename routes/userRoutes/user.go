@@ -53,9 +53,9 @@ func HandleUserRoutes(r *gin.Engine, userSvc *userService.Service) {
 		if err := c.ShouldBindJSON(&body); err != nil {
 			response.HandleErrorResponse(c, err)
 		}
-		exists, err := userSvc.UsernameExists(
+		err := userSvc.RegisterUser(
 			c.Request.Context(),
-			body.Username,
+			body,
 		)
 
 		if err != nil {
@@ -63,7 +63,7 @@ func HandleUserRoutes(r *gin.Engine, userSvc *userService.Service) {
 			return
 		}
 
-		response.HandleSuccessResponse(c, gin.H{"exists": exists})
+		response.HandleSuccessResponse(c, nil)
 		return
 	})
 }

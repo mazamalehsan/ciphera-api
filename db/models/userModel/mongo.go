@@ -1,11 +1,10 @@
 package userModel
 
 import (
-	"context"
-
 	"ciphera-api/constants"
 	"ciphera-api/db"
 	"ciphera-api/types"
+	"context"
 
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -25,7 +24,7 @@ func (m *MongoUserRepository) Insert(ctx context.Context, user *types.User) erro
 func (m *MongoUserRepository) FetchByID(ctx context.Context, id string) (types.User, error) {
 	var user types.User
 	err := db.Collection(constants.UserCollectionName).
-		FindOne(ctx, bson.M{"id": id}).
+		FindOne(ctx, bson.M{"uuid": id}).
 		Decode(&user)
 
 	return user, err

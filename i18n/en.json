@@ -1,0 +1,14 @@
+[
+  {
+    "id": "user.notFound",
+    "message": "User not found"
+  },
+  {
+    "id": "user.duplicate",
+    "message": "Username already taken."
+  },
+  {
+    "id": "auth.invalidCredentials",
+    "message": "Invalid username or public key"
+  }
+]

@@ -5,7 +5,7 @@ import (
 )
 
 type Message struct {
-	ID        string
+	UUID      string
 	To        string
 	FileId    string
 	GroupId   string

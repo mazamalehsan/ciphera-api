@@ -5,6 +5,9 @@ import (
 	"ciphera-api/types"
 	"context"
 	"errors"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 type Service struct {
@@ -42,5 +45,10 @@ func (s *Service) RegisterUser(
 	if exists {
 		return errors.New("username already taken")
 	}
+
+	user.UUID = uuid.NewString()
+	user.CreatedAt = time.Now()
+	user.UpdatedAt = time.Now()
+
 	return s.userRepo.Insert(ctx, &user)
 }
