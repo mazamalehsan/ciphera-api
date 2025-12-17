@@ -4,10 +4,6 @@ import (
 	"ciphera-api/db/models/userModel"
 	"ciphera-api/types"
 	"context"
-	"errors"
-	"time"
-
-	"github.com/google/uuid"
 )
 
 type Service struct {
@@ -32,23 +28,4 @@ func (s *Service) UsernameExists(
 	username string,
 ) (bool, error) {
 	return s.userRepo.UsernameExists(ctx, username)
-}
-
-func (s *Service) RegisterUser(
-	ctx context.Context,
-	user types.User,
-) error {
-	exists, err := s.UsernameExists(ctx, user.Username)
-	if err != nil {
-		return err
-	}
-	if exists {
-		return errors.New("username already taken")
-	}
-
-	user.UUID = uuid.NewString()
-	user.CreatedAt = time.Now()
-	user.UpdatedAt = time.Now()
-
-	return s.userRepo.Insert(ctx, &user)
 }

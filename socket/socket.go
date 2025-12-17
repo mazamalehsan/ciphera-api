@@ -4,21 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		origin := r.Header.Get("Origin")
 		allowed := map[string]bool{
-			"https://privmail.com":        true,
-			"https://app.privmail.com":    true,
-			"https://socket.privmail.com": true,
-			"http://localhost:3000":       true,
+			"http://localhost:3000": true,
 		}
 		if origin == "" {
 			return false
@@ -30,7 +28,7 @@ var upgrader = websocket.Upgrader{
 
 type Client struct {
 	ID            string
-	Email         string
+	UserId        string
 	Conn          *websocket.Conn
 	Ctx           context.Context
 	Cancel        context.CancelFunc
@@ -40,9 +38,15 @@ type Client struct {
 	WriteMu       sync.Mutex
 }
 
+type Group struct {
+	Name    string
+	Clients []string
+}
+
 var (
 	userClients  = make(map[string][]*Client)
 	allClients   = make(map[string]*Client)
+	groups       = make(map[string]*Group)
 	mu           sync.RWMutex
 	nextClientID = 1
 )
@@ -88,24 +92,6 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 	go listen(client)
 }
 
-func assignClientEmail(c *Client, email, sourceId string) {
-	mu.Lock()
-	defer mu.Unlock()
-
-	for _, cl := range userClients[email] {
-		if cl.ID == c.ID {
-			return
-		}
-	}
-
-	c.Email = email
-	c.SourceId = sourceId
-	c.Authenticated = true
-	userClients[email] = append(userClients[email], c)
-
-	fmt.Printf("Client %s authenticated as %s\n", c.ID, email)
-}
-
 func removeClient(c *Client) {
 	fmt.Println(`removing client from room`)
 	mu.Lock()
@@ -115,25 +101,42 @@ func removeClient(c *Client) {
 		c.Cancel()
 	}
 
-	if c.Email != "" {
-		list := userClients[c.Email]
+	if c.UserId != "" {
+		list := userClients[c.UserId]
 		for i, cl := range list {
 			if cl.ID == c.ID {
-				userClients[c.Email] = append(list[:i], list[i+1:]...)
+				userClients[c.UserId] = append(list[:i], list[i+1:]...)
 				break
 			}
 		}
-		if len(userClients[c.Email]) == 0 {
-			delete(userClients, c.Email)
+		if len(userClients[c.UserId]) == 0 {
+			delete(userClients, c.UserId)
 		}
 	}
 
 	delete(allClients, c.ID)
+	removeClientFromRooms(c.ID)
+}
+
+func removeClientFromRooms(clientID string) {
+	for roomName, grp := range groups {
+		for i, id := range grp.Clients {
+			if id == clientID {
+				grp.Clients = append(grp.Clients[:i], grp.Clients[i+1:]...)
+				break
+			}
+		}
+
+		//delete empty rooms if there is one
+		if len(grp.Clients) == 0 {
+			delete(groups, roomName)
+		}
+	}
 }
 
 func listen(c *Client) {
 	defer func() {
-		fmt.Println("Client disconnected:", c.ID)
+		fmt.Println("Client disconnected", c.ID)
 		removeClient(c)
 		c.Conn.Close()
 	}()
@@ -143,8 +146,6 @@ func listen(c *Client) {
 		if err != nil {
 			return
 		}
-
-		fmt.Printf("Message from %s: %s\n", c.ID, msg)
 
 		var data map[string]interface{}
 		if err := json.Unmarshal(msg, &data); err != nil {
@@ -189,9 +190,33 @@ func keepAliveLoop(c *Client) {
 }
 
 func joinRoom(c *Client, data map[string]interface{}) {
-	roomName := data["roomName"].(string)
+	roomName, ok := data["roomName"].(string)
+	if !ok || roomName == "" {
+		return
+	}
 
-	assignClientEmail(c, roomName, "")
+	mu.Lock()
+	defer mu.Unlock()
+
+	grp, exists := groups[roomName]
+	if !exists {
+		grp = &Group{
+			Name:    roomName,
+			Clients: []string{},
+		}
+		groups[roomName] = grp
+	}
+
+	// avoid duplicate join
+	for _, id := range grp.Clients {
+		if id == c.ID {
+			return
+		}
+	}
+
+	grp.Clients = append(grp.Clients, c.ID)
+
+	fmt.Printf("Client %s joined room %s\n", c.ID, roomName)
 }
 
 func safeWrite(c *Client, data []byte) error {
@@ -202,4 +227,36 @@ func safeWrite(c *Client, data []byte) error {
 		c.LastActivity = time.Now()
 	}
 	return err
+}
+
+func EmitToRoom(roomName string, payload interface{}) {
+	mu.RLock()
+	group, exists := groups[roomName]
+	if !exists || len(group.Clients) == 0 {
+		mu.RUnlock()
+		return
+	}
+
+	clientIDs := make([]string, len(group.Clients))
+	copy(clientIDs, group.Clients)
+	mu.RUnlock()
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+
+	for _, clientID := range clientIDs {
+		mu.RLock()
+		client := allClients[clientID]
+		mu.RUnlock()
+
+		if client == nil {
+			continue
+		}
+
+		if err := safeWrite(client, data); err != nil {
+			fmt.Println("EmitToRoom failed for client", clientID, ":", err)
+		}
+	}
 }

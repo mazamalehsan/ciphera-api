@@ -6,12 +6,14 @@ type User struct {
 	UUID      string
 	Username  string
 	PublicKey string
-	Privates  UserPrivates
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
-type UserPrivates struct {
-	Groups       []string
-	IssuedTokens []string
+type UserLoginChallenge struct {
+	UserUUID  string
+	UUID      string
+	Challenge string
+	ExpiresAt time.Time
+	Used      bool
 }

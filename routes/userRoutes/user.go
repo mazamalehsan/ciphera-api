@@ -11,7 +11,7 @@ import (
 func HandleUserRoutes(r *gin.Engine, userSvc *userService.Service) {
 	users := r.Group("/v1/users")
 	users.POST("/fetch-by-username", func(c *gin.Context) {
-		var body types.SingleUsernameBody
+		var body types.User
 		if err := c.ShouldBindJSON(&body); err != nil {
 			response.HandleErrorResponse(c, err)
 		}
@@ -45,25 +45,6 @@ func HandleUserRoutes(r *gin.Engine, userSvc *userService.Service) {
 		}
 
 		response.HandleSuccessResponse(c, gin.H{"exists": exists})
-		return
-	})
-
-	users.POST("/register", func(c *gin.Context) {
-		var body types.User
-		if err := c.ShouldBindJSON(&body); err != nil {
-			response.HandleErrorResponse(c, err)
-		}
-		err := userSvc.RegisterUser(
-			c.Request.Context(),
-			body,
-		)
-
-		if err != nil {
-			response.HandleErrorResponse(c, err)
-			return
-		}
-
-		response.HandleSuccessResponse(c, nil)
 		return
 	})
 }

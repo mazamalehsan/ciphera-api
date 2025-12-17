@@ -1,5 +1,7 @@
 package types
 
-type SingleUsernameBody struct {
-	Username string
+type LoginBody struct {
+	Username        string
+	SignedChallenge string
+	LoginId         string
 }

@@ -3,6 +3,6 @@ package types
 import "github.com/golang-jwt/jwt/v5"
 
 type JWTClaims struct {
-	UserID string `json:"sub"`
+	UserID string
 	jwt.RegisteredClaims
 }

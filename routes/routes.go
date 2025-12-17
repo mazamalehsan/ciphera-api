@@ -2,10 +2,13 @@ package routes
 
 import (
 	"ciphera-api/constants"
+	"ciphera-api/db/models/loginChallengeModel"
 	"ciphera-api/db/models/userModel"
 	"ciphera-api/middlewares"
 	"ciphera-api/response"
+	"ciphera-api/routes/authRoutes"
 	"ciphera-api/routes/userRoutes"
+	"ciphera-api/services/authService"
 	"ciphera-api/services/userService"
 	"time"
 
@@ -37,6 +40,11 @@ func HandleRoutes(r *gin.Engine) {
 	userRepo := userModel.New()
 	userSvc := userService.New(userRepo)
 
+	loginChallengeRepo := loginChallengeModel.New()
+
+	authSvc := authService.New(userRepo, loginChallengeRepo)
+
 	userRoutes.HandleUserRoutes(r, userSvc)
+	authRoutes.HandleAuthRoutes(r, authSvc)
 
 }

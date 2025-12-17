@@ -3,7 +3,10 @@ package jwt
 import (
 	"ciphera-api/types"
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -51,4 +54,21 @@ func VerifyAccessToken(
 	}
 
 	return claims, nil
+}
+
+func LoadRSAPrivateKey(key string) (*rsa.PrivateKey, error) {
+	key = strings.ReplaceAll(key, `\n`, "\n")
+	block, _ := pem.Decode([]byte(key))
+	if block == nil {
+		return nil, errors.New("failed to decode PEM block")
+	}
+	if block.Type != "RSA PRIVATE KEY" {
+		return nil, errors.New("not an RSA private key")
+	}
+
+	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return privateKey, nil
 }

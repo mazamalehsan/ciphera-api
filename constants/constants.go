@@ -19,7 +19,8 @@ func AllowedHeaders() []string {
 }
 
 const (
-	UserCollectionName    = "users"
-	MessageCollectionName = "messages"
-	GroupsCollectionName  = "groups"
+	UserCollectionName           = "users"
+	LoginChallengeCollectionName = "loginChallenges"
+	MessageCollectionName        = "messages"
+	GroupsCollectionName         = "groups"
 )
