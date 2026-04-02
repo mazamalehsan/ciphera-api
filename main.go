@@ -4,6 +4,7 @@ import (
 	"ciphera-api/db"
 	"ciphera-api/env"
 	"ciphera-api/routes"
+	"ciphera-api/socket"
 	"fmt"
 	"log"
 
@@ -19,10 +20,10 @@ func main() {
 
 	r := gin.New()
 
-	//go socket.RunWebSocketServer()
+	go socket.RunWebSocketServer()
 
 	routes.HandleRoutes(r)
 
-	fmt.Println("API + Socket.IO running on :" + env.GetSystemPort())
+	fmt.Println("API + WebSocket running on :" + env.GetSystemPort())
 	log.Fatal(r.Run(":" + env.GetSystemPort()))
 }

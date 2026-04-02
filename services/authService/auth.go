@@ -27,6 +27,10 @@ func New(userRepo userModel.UserRepository, loginChallengeRepo loginChallengeMod
 	}
 }
 
+func (s *Service) CheckUsernameDuplication(ctx context.Context, username string) (bool, error) {
+	return s.userRepo.UsernameExists(ctx, username)
+}
+
 func (s *Service) RegisterUser(
 	ctx context.Context,
 	user types.User,

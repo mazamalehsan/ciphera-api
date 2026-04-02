@@ -22,10 +22,3 @@ func (s *Service) GetByUsername(
 ) (types.User, error) {
 	return s.userRepo.FetchByUsername(ctx, username)
 }
-
-func (s *Service) UsernameExists(
-	ctx context.Context,
-	username string,
-) (bool, error) {
-	return s.userRepo.UsernameExists(ctx, username)
-}

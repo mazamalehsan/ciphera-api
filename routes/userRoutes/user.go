@@ -28,23 +28,4 @@ func HandleUserRoutes(r *gin.Engine, userSvc *userService.Service) {
 		response.HandleSuccessResponse(c, user)
 		return
 	})
-
-	users.POST("/check-username-duplication", func(c *gin.Context) {
-		var body types.User
-		if err := c.ShouldBindJSON(&body); err != nil {
-			response.HandleErrorResponse(c, err)
-		}
-		exists, err := userSvc.UsernameExists(
-			c.Request.Context(),
-			body.Username,
-		)
-
-		if err != nil {
-			response.HandleErrorResponse(c, err)
-			return
-		}
-
-		response.HandleSuccessResponse(c, gin.H{"exists": exists})
-		return
-	})
 }

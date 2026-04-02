@@ -2,13 +2,19 @@ package routes
 
 import (
 	"ciphera-api/constants"
+	"ciphera-api/db/models/groupModel"
 	"ciphera-api/db/models/loginChallengeModel"
+	"ciphera-api/db/models/messageModel"
 	"ciphera-api/db/models/userModel"
 	"ciphera-api/middlewares"
 	"ciphera-api/response"
 	"ciphera-api/routes/authRoutes"
+	"ciphera-api/routes/groupRoutes"
+	"ciphera-api/routes/messageRoutes"
 	"ciphera-api/routes/userRoutes"
 	"ciphera-api/services/authService"
+	"ciphera-api/services/groupService"
+	"ciphera-api/services/messageService"
 	"ciphera-api/services/userService"
 	"time"
 
@@ -24,27 +30,33 @@ func HandleRoutes(r *gin.Engine) {
 	corsConfig.AllowHeaders = constants.AllowedHeaders()
 	r.Use(cors.New(corsConfig))
 
-	//use timeout middleware
-
 	r.Use(middlewares.TimeoutMiddleware(30 * time.Second))
-
-	//generic server status check route//
 
 	r.GET("/status", func(c *gin.Context) {
 		response.HandleSuccessResponse(c, "ok")
 		return
 	})
 
-	//user routes handling//
-
+	// Repos
 	userRepo := userModel.New()
-	userSvc := userService.New(userRepo)
-
 	loginChallengeRepo := loginChallengeModel.New()
+	messageRepo := messageModel.New()
+	groupRepo := groupModel.New()
 
+	// Services
 	authSvc := authService.New(userRepo, loginChallengeRepo)
+	userSvc := userService.New(userRepo)
+	msgSvc := messageService.New(messageRepo, userRepo)
+	grpSvc := groupService.New(groupRepo, userRepo)
 
-	userRoutes.HandleUserRoutes(r, userSvc)
+	// Public routes (no auth)
 	authRoutes.HandleAuthRoutes(r, authSvc)
 
+	// Protected routes (require JWT)
+	protected := r.Group("/v1")
+	protected.Use(middlewares.AuthMiddleware())
+
+	userRoutes.HandleUserRoutes(r, userSvc)
+	messageRoutes.HandleMessageRoutes(protected, msgSvc)
+	groupRoutes.HandleGroupRoutes(protected, grpSvc)
 }

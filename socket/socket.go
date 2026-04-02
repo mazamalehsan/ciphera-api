@@ -17,6 +17,7 @@ var upgrader = websocket.Upgrader{
 		origin := r.Header.Get("Origin")
 		allowed := map[string]bool{
 			"http://localhost:3000": true,
+			"https://privmail.com": true,
 		}
 		if origin == "" {
 			return false
@@ -127,7 +128,6 @@ func removeClientFromRooms(clientID string) {
 			}
 		}
 
-		//delete empty rooms if there is one
 		if len(grp.Clients) == 0 {
 			delete(groups, roomName)
 		}
@@ -153,14 +153,57 @@ func listen(c *Client) {
 			return
 		}
 
-		action := data["action"].(string)
-
+		action, _ := data["action"].(string)
 		c.LastActivity = time.Now()
 
 		switch action {
+		case "auth":
+			handleAuth(c, data)
 		case "joinRoom":
 			joinRoom(c, data)
+		case "sendMessage":
+			handleSendMessage(c, data)
 		}
+	}
+}
+
+func handleAuth(c *Client, data map[string]interface{}) {
+	userId, _ := data["userId"].(string)
+	if userId == "" {
+		return
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	c.UserId = userId
+	c.Authenticated = true
+	userClients[userId] = append(userClients[userId], c)
+
+	fmt.Printf("Client %s authenticated as user %s\n", c.ID, userId)
+}
+
+func handleSendMessage(c *Client, data map[string]interface{}) {
+	if !c.Authenticated {
+		return
+	}
+
+	// Relay the message to recipient(s)
+	// For DM: send to the "to" user's connected clients
+	// For group: emit to the room
+
+	groupId, _ := data["groupId"].(string)
+
+	if groupId != "" {
+		// Group message — emit to room
+		EmitToRoom(groupId, data)
+	} else {
+		// DM — send to specific user
+		toUserId, _ := data["to"].(string)
+		if toUserId == "" {
+			return
+		}
+		EmitToUser(toUserId, data)
 	}
 }
 
@@ -227,6 +270,30 @@ func safeWrite(c *Client, data []byte) error {
 		c.LastActivity = time.Now()
 	}
 	return err
+}
+
+func EmitToUser(userId string, payload interface{}) {
+	mu.RLock()
+	clients, exists := userClients[userId]
+	if !exists || len(clients) == 0 {
+		mu.RUnlock()
+		return
+	}
+
+	clientsCopy := make([]*Client, len(clients))
+	copy(clientsCopy, clients)
+	mu.RUnlock()
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+
+	for _, client := range clientsCopy {
+		if err := safeWrite(client, data); err != nil {
+			fmt.Println("EmitToUser failed for client", client.ID, ":", err)
+		}
+	}
 }
 
 func EmitToRoom(roomName string, payload interface{}) {

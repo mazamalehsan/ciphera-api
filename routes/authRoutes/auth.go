@@ -10,6 +10,26 @@ import (
 
 func HandleAuthRoutes(r *gin.Engine, authSvc *authService.Service) {
 	auth := r.Group("/v1/auth")
+
+	auth.POST("/check-username-duplication", func(c *gin.Context) {
+		var body types.User
+		if err := c.ShouldBindJSON(&body); err != nil {
+			response.HandleErrorResponse(c, err)
+		}
+		exists, err := authSvc.CheckUsernameDuplication(
+			c.Request.Context(),
+			body.Username,
+		)
+
+		if err != nil {
+			response.HandleErrorResponse(c, err)
+			return
+		}
+
+		response.HandleSuccessResponse(c, gin.H{"isUsernameTaken": exists})
+		return
+	})
+
 	auth.POST("/register", func(c *gin.Context) {
 		var body types.User
 		if err := c.ShouldBindJSON(&body); err != nil {
